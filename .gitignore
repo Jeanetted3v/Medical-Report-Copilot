@@ -6,6 +6,15 @@ __pycache__/
 # C extensions
 *.so
 
+# data
+data/
+
+# dependencies
+poetry.lock
+
+# history
+.history
+
 # Distribution / packaging
 .Python
 build/
