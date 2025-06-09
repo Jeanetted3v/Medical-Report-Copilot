@@ -4,6 +4,7 @@ import asyncio
 from src.pipeline import MainPipeline
 from src.utils.cls_LLM import build_settings_dict
 
+
 class ChatInterface:
     def __init__(self, cfg):
         self.cfg = cfg
