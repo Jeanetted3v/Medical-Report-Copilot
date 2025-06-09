@@ -9,10 +9,10 @@ __pycache__/
 # data
 data/
 
-# dependencies
+# project specific files
 poetry.lock
-
-# history
+.DS_Store
+outputs/*
 .history
 
 # Distribution / packaging
