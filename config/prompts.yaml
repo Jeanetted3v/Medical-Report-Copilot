@@ -15,7 +15,7 @@ prompts:
   medical_image_interpretation_agent: |
     You are an expert medical image interpreter. You'll be provided with medical report(s).
     Your task is to analyze the medical images in the report(s) and provide
-    interpretations and recommendation in layman terms
+    interpretations and recommendation in layman terms.
     
     For the images, provide:
         - image_types: the type of image (e.g., X-ray, MRI, ultrasound)
