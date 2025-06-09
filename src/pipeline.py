@@ -9,11 +9,15 @@ from typing import List, Optional
 from enum import Enum
 import base64
 import pymupdf
+from traceloop.sdk import Traceloop
+from traceloop.sdk.decorators import workflow
 from pydantic import BaseModel
 from src.utils.cls_LLM import build_llm_client
 
 
 logger = logging.getLogger(__name__)
+
+Traceloop.init(disable_batch=True)
 
 
 class ReportType(Enum):
@@ -35,6 +39,14 @@ class PageMetadata(BaseModel):
             img_base64 = base64.b64encode(self.page_image_data).decode()
             return f"data:image/png;base64,{img_base64}"
         return None
+    
+    class Config:
+        json_encoders = {
+            bytes: lambda v: f"<{len(v)} bytes>"
+        }
+        fields = {
+            "page_image_data": {"exclude": True}
+        }
 
 
 class SinglePDFResult(BaseModel):
@@ -81,7 +93,7 @@ class MainPipeline:
     def __init__(self, cfg, settings_dict: dict):
         self.cfg = cfg
         self.medical_image_agent = build_llm_client(settings_dict, "")
-    
+
     async def _send_images_with_prompt(
         self, images: List[str], prompt: str, response_model, agent
     ):
@@ -95,7 +107,8 @@ class MainPipeline:
         
         try:
             result = await agent.async_structured_completion(
-                response_model=response_model, temperature=0.1
+                response_model=response_model,
+                temperature=0.1
             )
             return result
         finally:
@@ -133,7 +146,8 @@ class MainPipeline:
         except Exception as e:
             logger.error(f"Error processing PDF {pdf_path}: {e}")
             raise e
-                
+
+    @workflow(name="check_medical_images")
     async def check_medical_images(self, page_metadata: list[PageMetadata]) -> Optional[bool]:
         """check if the pdf file is a medical image or a text-only problem."""
         pdf_filename = page_metadata[0].source_pdf_filename
@@ -169,6 +183,7 @@ class MainPipeline:
         """Extract images from a PDF file and return metadata."""
         pass
 
+    @workflow(name="generate_image_interpretation")
     async def generate_image_interpretation(self, pages_with_images: List[PageMetadata]) -> str:
         """For medical image problems, generate an interpretation of the report."""
         try:

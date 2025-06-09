@@ -21,8 +21,13 @@ class Settings(BaseSettings):
     AZURE_OPENAI_ENDPOINT: str
     AZURE_OPENAI_DEPLOYMENT: str
     AZURE_API_VERSION: str
+    VERTEXAI_PROJECT: str
+    VERTEXAI_LOCATION: str
+    GOOGLE_APPLICATION_CREDENTIALS: str
 
     LLM_TEMPERATURE: float
+
+    TRACELOOP_API_KEY: str
 
 
 SETTINGS = Settings()

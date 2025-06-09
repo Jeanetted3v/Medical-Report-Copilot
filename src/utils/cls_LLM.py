@@ -1,11 +1,15 @@
+import json
 from typing import Type, TypeVar
 import litellm
 import instructor
 from pydantic import BaseModel
+from traceloop.sdk import Traceloop
 from src.utils.settings import SETTINGS
 
 
 T = TypeVar('T', bound=BaseModel)
+
+Traceloop.init(disable_batch=True)
 
 
 class LLMClient:
@@ -31,10 +35,11 @@ class LLMClient:
         kwargs = {
             "model": self.model,
             "messages": self.messages,
-            "api_key": self.api_key,
             "response_model": response_model,
             "temperature": temperature
         }
+        if self.api_key:
+            kwargs["api_key"] = self.api_key
         if self.extra_params:
             kwargs.update(self.extra_params)
         
@@ -55,10 +60,40 @@ def build_llm_client(settings_dict: dict, prompt: str) -> LLMClient:
                 "deployment_id": settings_dict["azure_openai_deployment"]
             }
         )
+    elif provider == "vertexai":
+        vertex_credentials = None
+        if settings_dict.get("google_application_credentials"):
+            try:
+                with open(settings_dict["google_application_credentials"], 'r') as file:
+                    vertex_creds_dict = json.load(file)
+                vertex_credentials = json.dumps(vertex_creds_dict)
+            except Exception as e:
+                print(f"Warning: Could not load Vertex AI credentials: {e}")
+        
+        # Format model name with vertex_ai/ prefix if not already present
+        model_name = settings_dict["llm_model"]
+        if not model_name.startswith("vertex_ai/"):
+            model_name = f"vertex_ai/{model_name}"
+        
+        extra_params = {
+            "vertex_project": settings_dict["vertexai_project"],
+            "vertex_location": settings_dict["vertexai_location"]
+        }
+        
+        if vertex_credentials:
+            extra_params["vertex_credentials"] = vertex_credentials
+        
+        return LLMClient(
+            provider="vertexai",
+            api_key=None,  # Vertex AI uses service account credentials
+            model=model_name,
+            messages=[{"role": "user", "content": prompt}],
+            extra_params=extra_params
+        )
     else:  # assume "openai"
         return LLMClient(
             provider="openai",
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             api_key=settings_dict["openai_api_key"],
             messages=[{"role": "user", "content": prompt}]
         )
@@ -79,6 +114,9 @@ def build_settings_dict() -> dict:
         "azure_openai_endpoint": SETTINGS.AZURE_OPENAI_ENDPOINT,
         "azure_openai_deployment": SETTINGS.AZURE_OPENAI_DEPLOYMENT,
         "azure_api_version": SETTINGS.AZURE_API_VERSION,
+        "vertexai_project": SETTINGS.VERTEXAI_PROJECT,
+        "vertexai_location": SETTINGS.VERTEXAI_LOCATION,
+        "google_application_credentials": SETTINGS.GOOGLE_APPLICATION_CREDENTIALS,
         "llm_temperature": SETTINGS.LLM_TEMPERATURE,
         "llm_model": SETTINGS.LLM_MODEL
     }
