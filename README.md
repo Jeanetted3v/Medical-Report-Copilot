@@ -12,7 +12,15 @@ This project aims to build a GenAI-powered chatbot that helps seniors interpret 
     <figcaption>This app takes in pdf of medical reports including medical images, checks if it is an image problem or merely a text problem. If it is an image problem, it'll convert pdf to one image per page, employs a multimodal LLM to 'read' the contents and provide interpretations and recommendations. If it is a mere text problem, it'll use a PDF parser to parse out text before using LLM to provide interpretations and recommendations</figcaption>
 </figure>
 
+
+## Features
+1. Deployed MedGemma 4b (multimodal) via Google VertexAI VLLM. More about [MedGemma](https://deepmind.google/models/gemma/medgemma/)
+2. Configurable between MedGemma, OpenAI, AzureOpenAI
+3. Stores text, images, interpretations in database, convert to embeddings for future retrieval upon request
+
 ## Tech Stack
 * Agentic framework: LiteLLM, Instructor
 * LLM Model: AzureOpenAI, OpenAI, MedGemma
+* Database and vector database: PostgreSQL, PGVector
+
 
