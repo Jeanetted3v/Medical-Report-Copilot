@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Text, String, Float, CheckConstraint, ForeignKey, DateTime, func
+from sqlalchemy import Column, Integer, Text, String, Float, LargeBinary, CheckConstraint, ForeignKey, DateTime, func
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -7,7 +7,7 @@ Base = declarative_base()
 
 
 class User(Base):
-    __tablename__ = 'users'
+    __tablename__ = 'user'
     
     id = Column(Integer, primary_key=True)
     username = Column(Text, unique=True, nullable=False, index=True)
@@ -27,10 +27,10 @@ class Report(Base):
     __tablename__ = "report"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True)
     report_type = Column(String, nullable=False)  # 'text_only' or 'medical_image'
     raw_text = Column(Text)
-    image = Column(String)  # store a file path or encoded string (for POC)
+    overall_interpretation = Column(Text, nullable=True)  # LLM generated interpretation for the entire report
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
@@ -39,7 +39,7 @@ class Report(Base):
 
 
 class LabResult(Base):
-    __tablename__ = "lab_results"
+    __tablename__ = "lab_result"
 
     id = Column(Integer, primary_key=True)
     report_id = Column(Integer, ForeignKey("report.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -52,21 +52,23 @@ class LabResult(Base):
     upper_range = Column(Float, nullable=True)  # llm suggested
     interpretation = Column(String)  # 'normal', 'high', 'low'
     test_date = Column(DateTime)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())  # Added for consistency
 
 
 class MedicalImage(Base):
-    __tablename__ = "medical_images"
+    __tablename__ = "medical_image"
 
     id = Column(Integer, primary_key=True)
     report_id = Column(Integer, ForeignKey("report.id", ondelete="CASCADE"), nullable=False, index=True)
+    page_number = Column(Integer, nullable=False)
     image_type = Column(String, nullable=False)  # e.g., 'X-ray', 'MRI', 'CT', 'Graph'
     image_descriptions = Column(Text)
-    image_data = Column(String)  # store a file path or encoded string
-    extracted_text = Column(Text)
+    image_data = Column(LargeBinary)  # store a file path or encoded string
+    image_interpretation = Column(Text, nullable=True)  # LLM generated interpretation for the image
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
-class Embedding(Base):
+class Embeddings(Base):
     __tablename__ = "embeddings"
 
     id = Column(Integer, primary_key=True)
@@ -79,5 +81,5 @@ class Embedding(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
-        CheckConstraint("source_table IN ('reports', 'lab_results', 'medical_images')", name='check_source_table'),
+        CheckConstraint("source_table IN ('report', 'lab_result', 'medical_image')", name='check_source_table'),
     )
