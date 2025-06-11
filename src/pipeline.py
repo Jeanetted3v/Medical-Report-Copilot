@@ -10,11 +10,12 @@ from enum import Enum
 import base64
 import pymupdf
 import pdfplumber
+from pydantic_ai import Agent, ImageUrl
 from traceloop.sdk import Traceloop
 from traceloop.sdk.decorators import workflow
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
-from src.utils.cls_LLM import build_llm_client
+from src.utils.llm_model_factory import LLMModelFactory
 from src.database.psql_schema import User, Upload, LabResult, Image, Embedding
 from src.database.psql_manager import PSQL
 
@@ -94,32 +95,19 @@ class ImageReportInterpretation(BaseModel):
 
 
 class MainPipeline:
-    def __init__(self, cfg, settings_dict: dict):
+    def __init__(self, cfg):
         self.cfg = cfg
-        self.medical_image_agent = build_llm_client(settings_dict, "")
-
-    async def _send_images_with_prompt(
-        self, images: List[str], prompt: str, response_model, agent
-    ):
-        """Helper method to send images with prompt - hides the complexity"""
-        image_contents = [{"type": "image_url", "image_url": {"url": img}} for img in images]
-        message_content = [{"type": "text", "text": prompt}] + image_contents
-        
-        # Temporarily update agent messages
-        original_messages = agent.messages
-        agent.messages = [{"role": "user", "content": message_content}]
-        
-        try:
-            result = await agent.async_structured_completion(
-                response_model=response_model,
-                temperature=0.1
+        self.azure_model = LLMModelFactory.create_model(dict(self.cfg.azure))
+        self.check_medical_images_agent = Agent(
+                model=self.azure_model,
+                result_type=MedicalImageCheck,
             )
-            return result
-        finally:
-            # Restore original messages
-            agent.messages = original_messages
+        self.extract_markdown_text_agent = Agent(
+                model=self.azure_model,
+                result_type=str
+            )
 
-    def pdf_to_images(self, pdf_path: str) -> List[PageMetadata]:
+    def _pdf_to_images(self, pdf_path: str) -> List[PageMetadata]:
         """Convert PDF files to multiple images, one per page."""
         pdf_filename = Path(pdf_path).name
         pages_metadata = []
@@ -152,17 +140,16 @@ class MainPipeline:
             raise e
 
     @workflow(name="check_medical_images")
-    async def check_medical_images(self, page_metadata: list[PageMetadata]) -> Optional[bool]:
+    async def _check_medical_images(self, page_metadata: list[PageMetadata]) -> Optional[bool]:
         """check if the pdf file is a medical image or a text-only problem."""
         pdf_filename = page_metadata[0].source_pdf_filename
         try:
-            image_data_urls = [page.image_url for page in page_metadata if page.image_url]
-            result = await self._send_images_with_prompt(
-                images=image_data_urls,
-                prompt=self.cfg.prompts.medical_image_agent,
-                response_model=MedicalImageCheck,
-                agent=self.medical_image_agent
-            )
+            message_content = [self.cfg.prompts.check_medical_images_agent]
+            for page in page_metadata:
+                if page.image_url:
+                    message_content.append(ImageUrl(url=page.image_url))
+
+            result = await self.check_medical_images_agent.run(message_content)
             logger.info(f"Result of Checking Medical Images: {result}")
             is_medical_image = result.is_medical_image
             # Update ALL pages with the same result (whole PDF classification)
@@ -179,7 +166,8 @@ class MainPipeline:
             # Default to treating as having images for safety
             return
 
-    def extract_text_from_pdf(self, pdf_path: str) -> str:
+    @workflow(name="extract_markdown_text")
+    async def _extract_markdown_text(self, pdf_path: str) -> str:
         """Extract text content from a PDF file."""
         try:
             extracted_text = []
@@ -192,17 +180,22 @@ class MainPipeline:
                         extracted_text.append(f"--Page {page_num}")
                         extracted_text.append(page_text)
             full_text = "\n".join(extracted_text)
-            return full_text
+            result = await self.extract_markdown_text_agent.run(full_text)
+            formatted_text = result.data
+            return formatted_text.strip() if formatted_text else ""
         except Exception as e:
             logger.error(f"Error extracting text from PDF {pdf_path}: {e}")
             return ""
 
-    def extract_images(self, pdf_path: str) -> List[PageMetadata]:
+    async def extract_text_from_tables(self, page_meta_data: list[PageMetadata]) -> str:
+        """Extract text from tables in the PDF content."""
+
+    def _extract_medical_images(self, pdf_path: str) -> List[PageMetadata]:
         """Extract images from a PDF file and return metadata."""
         pass
 
     @workflow(name="generate_image_interpretation")
-    async def generate_image_interpretation(self, pages_with_images: List[PageMetadata]) -> str:
+    async def _generate_image_interpretation(self, pages_with_images: List[PageMetadata]) -> str:
         """For medical image problems, generate an interpretation of the report."""
         try:
             pdf_filename = pages_with_images[0].source_pdf_filename
@@ -223,19 +216,13 @@ class MainPipeline:
                 images=image_data_urls,
                 prompt=self.cfg.prompts.medical_image_interpretation_agent,
                 response_model=ImageReportInterpretation,
-                agent=self.medical_image_agent
+                agent=self.llm
             )
             logger.info(f"Results from medical image interpretation agent: {result}")
             return result.interpretation if result else ""
         except Exception as e:
             logger.error(f"Error generating image interpretation: {str(e)}")
             return ""
-
-    async def generate_text_interpretation(self, text_content: str, pdf_name: str) -> str:
-        """For text-only problems, generate an interpretation of the report.
-        CK
-        """
-        pass
 
     async def run_single_pdf(self, pdf_path: str) -> SinglePDFResult:
         """Process a single PDF file and return the results."""
