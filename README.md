@@ -8,7 +8,7 @@ This project aims to build a GenAI-powered chatbot that helps seniors interpret 
 
 ## Proposed Solution Architecture
 <figure>
-    <img src="assets/architecture_diagram.png" alt="Architecture Diagram" width="800">
+    <img src="assets/med_archi.png" alt="Architecture Diagram" width="1200">
     <figcaption>This app takes in pdf of medical reports including medical images, checks if it is an image problem or merely a text problem. If it is an image problem, it'll convert pdf to one image per page, employs a multimodal LLM to 'read' the contents and provide interpretations and recommendations. If it is a mere text problem, it'll use a PDF parser to parse out text before using LLM to provide interpretations and recommendations</figcaption>
 </figure>
 
