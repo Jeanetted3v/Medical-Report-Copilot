@@ -1,7 +1,8 @@
 
+pdf_path: ./data/raw/Eye_test_report (1).pdf
 
 
-reasoning:
+azure:
   provider: azure_async  # openai, openai_async, azure, azure_async, google-gla, anthropic
   model_name: gpt-4o # gpt-4o, claude-3-5-sonnet-latest, gemini-2.0-flash, etc
   api_version: 2024-09-01-preview # for AzureOpenAI
