@@ -43,9 +43,9 @@ class LLMModelFactory:
             )
         elif provider_type == 'azure_async':
             client = AsyncAzureOpenAI(
-                azure_endpoint=SETTINGS.AZURE_ENDPOINT,
+                azure_endpoint=SETTINGS.AZURE_OPENAI_ENDPOINT,
                 api_version=config.get('api_version', '2024-09-01-preview'),
-                api_key=SETTINGS.AZURE_API_KEY,
+                api_key=SETTINGS.AZURE_OPENAI_API_KEY,
             )
             return OpenAIModel(
                 model_name,

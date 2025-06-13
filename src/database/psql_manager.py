@@ -1,9 +1,12 @@
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base
 
-from src.database.psql_schema import Base, User, Upload, LabResult, Image, Embedding
+from src.database.psql_schema import User, Report, LabResult, MedicalImage, Embeddings
 from src.utils.settings import SETTINGS
+
+Base = declarative_base()
 
 
 class PostgreSQL:
@@ -27,10 +30,10 @@ class PostgreSQL:
             async with self.engine.begin() as conn:
                 tables = [
                     User.__table__,
-                    Upload.__table__,
+                    Report.__table__,
                     LabResult.__table__,
-                    Image.__table__,
-                    Embedding.__table__,
+                    MedicalImage.__table__,
+                    Embeddings.__table__,
                 ]
                 await conn.run_sync(Base.metadata.create_all, tables)
 
