@@ -14,13 +14,15 @@ This project aims to build a GenAI-powered chatbot that helps seniors interpret 
 
 
 ## Features
-1. Deployed MedGemma 4b (multimodal) via Google VertexAI VLLM. More about [MedGemma](https://deepmind.google/models/gemma/medgemma/)
+1. Deployed MedGemma 4b (multimodal) via Google VertexAI vLLM. More about [MedGemma](https://deepmind.google/models/gemma/medgemma/)
 2. Configurable between MedGemma, OpenAI, AzureOpenAI
 3. Stores text, images, interpretations in database, convert to embeddings for future retrieval upon request
+4. Abstracted interpretation as "Memory" (To develop)
 
 ## Tech Stack
-* Agentic framework: LiteLLM, Instructor
+* Agentic framework: Pydantic AI. (Previously using LiteLLM but find Pydantic AI simplier and more flexible)
 * LLM Model: AzureOpenAI, OpenAI, MedGemma
 * Database and vector database: PostgreSQL, PGVector
+* Observility for agentic calls: TraceLoop
 
 
