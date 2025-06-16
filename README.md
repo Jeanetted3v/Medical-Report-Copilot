@@ -26,3 +26,10 @@ This project aims to build a GenAI-powered chatbot that helps seniors interpret 
 * Observility for agentic calls: TraceLoop
 
 
+## Updates
+
+## Reference & Thoughts
+* [AI to help doctors predict disease risk in next phase of Healthier SG 16June2025](https://www.straitstimes.com/singapore/health/ai-to-help-doctors-predict-disease-risk-in-next-bound-of-healthier-sg-ong-ye-kung)
+    * Singapore just announced to leverage on health records for predictive AI. Glad that I had something similar in mind when first started this project. 
+    * Data may include: National health records, socio-economic, genetic data 
+* Planning to include a multi-level memory module, with reference to [Mem0](https://github.com/mem0ai/mem0)
