@@ -26,7 +26,11 @@ This project aims to build a GenAI-powered chatbot that helps seniors interpret 
 * Observility for agentic calls: TraceLoop
 
 
-## Updates
+## Updates (Documenting progress and findings)
+* 16June2025: testing pipleine using the eye medical report
+    * It seems to be scanned pdf, which pdfplumber isn't able to handle. Need to use OCR or imageURL instead.
+    
+
 
 ## Reference & Thoughts
 * [AI to help doctors predict disease risk in next phase of Healthier SG 16June2025](https://www.straitstimes.com/singapore/health/ai-to-help-doctors-predict-disease-risk-in-next-bound-of-healthier-sg-ong-ye-kung)
