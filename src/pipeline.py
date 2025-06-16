@@ -65,16 +65,14 @@ class MedicalImageCheck(BaseModel):
     """Response model for agent checking if a PDF is a medical image problem"""
     is_medical_image: bool
     report_type: ReportType
-    image_captions: List[str] = []  # Captions for medical images if applicable
-    image_types: List[str] = []  # Types of images found (e.g., X-ray, MRI)
-    medical_image_locations: List[MedicalImageLocation] = [] 
+    medical_image_locations: List[MedicalImageLocation] = []
 
 
-
-class MedicalImage(BaseModel):
+class MedicalImageInterpretation(BaseModel):
     image_type: str  # e.g., 'X-ray', 'MRI', 'CT', 'Graph'
     image_descriptions: str
     image_interpretation: Optional[str] = None
+
 
 class LabTest(BaseModel):
     test_name: str
@@ -92,7 +90,7 @@ class Interpretation(BaseModel):
     datetime: datetime
     lab_result: Optional[List[LabTest]]
     interpretation: str
-    reasoning_interpretation: Optional[str] = None
+    reasoning: Optional[str] = None
 
 
 class SinglePDFResult(BaseModel):
@@ -102,7 +100,7 @@ class SinglePDFResult(BaseModel):
     overall_interpretation: Optional[str] = None  # LLM generated interpretation for the entire report
     pages: List[PageMetadata]
     lab_results: Optional[List[LabTest]] = []
-    medical_images: Optional[List[MedicalImage]] = []
+    medical_images: Optional[List[MedicalImageInterpretation]] = []
 
 
 class MainPipeline:
@@ -119,7 +117,7 @@ class MainPipeline:
             )
         self.image_interpretor_agent = Agent(
                 model=self.azure_model,
-                result_type=MedicalImage,
+                result_type=MedicalImageInterpretation,
             )
         self.lab_result_agent = Agent(
                 model=self.azure_model,
@@ -174,15 +172,12 @@ class MainPipeline:
 
             result = await self.check_medical_images_agent.run(message_content)
             logger.info(f"Result of Checking Medical Images: {result}")
-            is_medical_image = result.is_medical_image
+            is_medical_image = result.data.is_medical_image
             # Update ALL pages with the same result (whole PDF classification)
             for page in page_metadata:
-                page.report_type = result.report_type
-                page.image_captions = result.image_captions if is_medical_image else []
+                page.report_type = result.data.report_type
 
             logger.info(f"Medical image analysis for {pdf_filename}: {is_medical_image}")
-            if result.image_types:  # Fix: check image_types not image_captions
-                logger.info(f"Found image types: {', '.join(result.image_types)}")
             return result.data
         except Exception as e:
             logger.error(f"Error checking for medical images: {str(e)}")
@@ -299,17 +294,17 @@ class MainPipeline:
                             ImageUrl(url=region_url)
                         ])
                         # Handle result based on result_type (should be MedicalImage)
-                        if hasattr(result, 'image_type'):
+                        if hasattr(result.data, 'image_type'):
                             # Direct access if result is MedicalImage object
-                            image_type = result.image_type
-                            image_descriptions = result.image_descriptions
-                            image_interpretation = result.image_interpretation
+                            image_type = result.data.image_type
+                            image_descriptions = result.data.image_descriptions
+                            image_interpretation = result.data.image_interpretation
                         else:
                             # Fallback if result has .data attribute
-                            image_type = result.data.image_type if hasattr(result, 'data') else location.image_type
-                            image_descriptions = result.data.image_descriptions if hasattr(result, 'data') else location.caption
-                            image_interpretation = result.data.image_interpretation if hasattr(result, 'data') else None
-                        
+                            image_type = result.data.image_type if hasattr(result.data, 'image_type') else location.image_type
+                            image_descriptions = result.data.image_descriptions if hasattr(result.data, 'image_descriptions') else location.caption
+                            image_interpretation = result.data.image_interpretation if hasattr(result.data, 'image_interpretation') else None
+
                         medical_images.append({
                             'page_number': location.page_number,
                             'image_type': image_type,
