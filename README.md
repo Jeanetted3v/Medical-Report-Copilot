@@ -26,9 +26,10 @@ This project aims to build a GenAI-powered chatbot that helps seniors interpret 
 * Observility for agentic calls: TraceLoop
 
 
-## Updates (Documenting progress and findings)
-* 16June2025: testing pipleine using the eye medical report
-    * It seems to be scanned pdf, which pdfplumber isn't able to handle. Need to use OCR or imageURL instead.
+## Documenting progress and findings
+* 16June2025: testing pipleine using the eye medical report. It seems to be scanned pdf, which pdfplumber isn't able to handle. Need to use OCR or LLM's imageURL instead.
+* 17June2025: Only managed to test Tesseract (OCR). MinerU and Docling couldn't work. I suspect its due to the current old laptop. Might want to test them on my mac mini instead.
+*  
     
 
 
