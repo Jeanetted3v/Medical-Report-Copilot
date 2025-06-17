@@ -8,10 +8,15 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any, Tuple
 import io
 import json
+
 from enum import Enum
 import base64
 import pymupdf
 import pdfplumber
+from PIL import Image
+import pytesseract
+import pytesseract
+from pdf2image import convert_from_path
 from pydantic_ai import Agent, ImageUrl
 from traceloop.sdk import Traceloop
 from traceloop.sdk.decorators import workflow
@@ -189,52 +194,57 @@ class MainPipeline:
                 medical_image_locations=[]
             )
 
-    def _extract_text_and_tables(self, pdf_path: str) -> str:
-        """Extract text and tables from PDF, preparing them for LLM processing."""
-        extracted_content = []
+    def _extract_using_pytesseract(self, pdf_path: str) -> str:
+        """Extract text and table text using pytesseract OCR.
         
-        with pdfplumber.open(pdf_path) as pdf:
-            logger.info(f"Processing {len(pdf.pages)} pages from {pdf_path}")
+        Returns:
+            str: Raw OCR text from all pages including table content
+        """
+        try:
+            logger.info(f"Extracting text from {pdf_path} using pytesseract OCR")
             
-            for page_num, page in enumerate(pdf.pages, 1):
-                page_content = []
-                page_content.append(f"--- PAGE {page_num} ---")
-                tables = page.extract_tables()
-                table_areas = []
+            # Convert PDF pages to images
+            pages = convert_from_path(pdf_path, dpi=300)  # High DPI for better OCR
+            
+            extracted_text = ""
+            
+            for page_num, page_image in enumerate(pages, 1):
+                logger.info(f"Processing page {page_num}/{len(pages)}")
                 
-                if tables:
-                    page_content.append("\n[TABLES ON THIS PAGE:]")
-                    for table_idx, table in enumerate(tables):
-                        if table and len(table) > 0:
-                            page_content.append(f"\nTable {table_idx + 1}:")
-                            # Format table for LLM
-                            for row_idx, row in enumerate(table):
-                                if row:  # Skip empty rows
-                                    cleaned_row = [str(cell).strip() if cell else "" for cell in row]
-                                    page_content.append(" | ".join(cleaned_row))
-                            # Get table bounding box to potentially exclude from text
-                            try:
-                                table_obj = page.find_tables()[table_idx]
-                                table_areas.append(table_obj.bbox)
-                            except (IndexError, AttributeError):
-                                pass
-                # Extract text
-                page_text = page.extract_text()
-                if page_text:
-                    page_content.append("\n[TEXT CONTENT:]")
-                    page_content.append(page_text)
+                # Extract text using OCR with timeout and config
+                try:
+                    page_text = pytesseract.image_to_string(
+                        page_image, 
+                        config='--psm 6',  # Assume uniform block of text
+                        timeout=30  # 30 second timeout per page
+                    )
+                except RuntimeError as timeout_error:
+                    logger.warning(f"OCR timeout on page {page_num}: {timeout_error}")
+                    page_text = f"[OCR TIMEOUT ON PAGE {page_num}]"
                 
-                if len(page_content) > 1:  # More than just the page header
-                    extracted_content.extend(page_content)
-                    extracted_content.append("")  # Add spacing between pages
-        
-        return "\n".join(extracted_content)
+                if page_text.strip():
+                    extracted_text += f"--- PAGE {page_num} ---\n"
+                    extracted_text += page_text.strip() + "\n\n"
+            
+            if len(extracted_text.strip()) > 10:
+                logger.info(f"Successfully extracted {len(extracted_text)} characters from {len(pages)} pages")
+                return extracted_text
+            else:
+                logger.warning("OCR extracted minimal text content")
+                return "No meaningful text could be extracted via OCR."
+                
+        except ImportError as e:
+            logger.error(f"Required libraries not installed: {e}")
+            return f"OCR libraries not available: {e}. Install with: pip install pytesseract pdf2image"
+        except Exception as e:
+            logger.error(f"Error extracting from {pdf_path}: {e}")
+            return f"Error extracting content: {str(e)}"
 
     @workflow(name="extract_markdown_text")
     async def _extract_markdown_text(self, pdf_path: str) -> str:
         """Extract text content from a PDF file and convert to structured markdown."""
         try:
-            extracted_content = self._extract_text_and_tables(pdf_path)
+            extracted_content = self._extract_using_pytesseract(pdf_path)
             if not extracted_content:
                 logger.warning(f"No content extracted from {pdf_path}")
                 return ""
