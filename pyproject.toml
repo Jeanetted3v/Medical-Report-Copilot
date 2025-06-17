@@ -11,11 +11,10 @@ authors = [
 ]
 license = {text = "To be determined"}
 readme = "README.md"
-requires-python = ">=3.12, <4.0"
+requires-python = ">=3.12, <3.14"
 dependencies = [
     "openai (>=1.83.0,<2.0.0)",
     "python-dotenv (>=1.1.0,<2.0.0)",
-    "pydantic (>=2.11.5,<3.0.0)",
     "pyyaml (>=6.0.2,<7.0.0)",
     "python-json-logger (>=3.3.0,<4.0.0)",
     "hydra-core (>=1.3.2,<2.0.0)",
@@ -29,7 +28,11 @@ dependencies = [
     "pydantic-ai (>=0.2.16,<0.3.0)",
     "pgvector (>=0.4.1,<0.5.0)",
     "ipykernel (>=6.29.5,<7.0.0)",
-    "pandas (>=2.3.0,<3.0.0)"
+    "pandas (>=2.3.0,<3.0.0)",
+    "magic-pdf (==0.6.1)",
+    "pydantic (>=2.11.7,<3.0.0)",
+    "pytesseract (>=0.3.13,<0.4.0)",
+    "pdf2image (>=1.17.0,<2.0.0)",
 ]
 
 
