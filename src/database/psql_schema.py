@@ -85,4 +85,23 @@ class Embeddings(Base):
     )
 
 
-# class HealthStateSnapshot(Base):
+class TemporalMemory(Base):
+    __tablename__ = "temporal_memory"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True)
+    date = Column(DateTime(timezone=True), server_default=func.now())
+    summary = Column(Text, nullable=True)
+
+
+class Abnormality(Base):
+    __tablename__ = "abnormality"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True)
+    lab_result_id = Column(Integer, ForeignKey("lab_result.id", ondelete="CASCADE"), nullable=True, index=True)
+    medical_image_id = Column(Integer, ForeignKey("medical_image.id", ondelete="CASCADE"), nullable=True, index=True)
+    datetime = Column(DateTime(timezone=True), server_default=func.now())
+    description = Column(Text, nullable=False)
+    severity = Column(String, nullable=False)  # e.g., 'mild', 'moderate', 'severe'
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
