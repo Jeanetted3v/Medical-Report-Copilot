@@ -4,7 +4,6 @@ poetry run python -m src.main
 import logging
 import hydra
 import asyncio
-from pathlib import Path
 from omegaconf import DictConfig
 from src.utils.settings import SETTINGS
 from src.utils.logging import setup_logging

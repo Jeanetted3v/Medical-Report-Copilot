@@ -83,3 +83,6 @@ class Embeddings(Base):
     __table_args__ = (
         CheckConstraint("source_table IN ('report', 'lab_result', 'medical_image')", name='check_source_table'),
     )
+
+
+# class HealthStateSnapshot(Base):
