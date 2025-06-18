@@ -2,9 +2,11 @@
 Leveraging on vision-language LLM to help users to understand about their medical report, advice on lifestyle changes , etc
 
 ## Project Motivation
-Many seniors struggle to understand their medical reports due to complex terminology. As a result, they often turn to Google, ChatGPT, or their children for help—frequently receiving inconsistent or unclear information. This confusion can lead to skepticism toward doctors' diagnoses and treatment plans.
+1. Many seniors struggle to understand their medical reports due to complex terminology. As a result, they often turn to Google, ChatGPT, or their children for help—frequently receiving inconsistent or unclear information. This confusion can lead to skepticism toward doctors' diagnoses and treatment plans.
 
 This project aims to build a GenAI-powered chatbot that helps seniors interpret their medical reports in clear, simple language. By offering trustworthy, conversational explanations, the tool empowers them to better understand their health and make informed decisions with greater confidence.
+
+2. Also using this as a playground to test various extraction techniques and tools
 
 ## Proposed Solution Architecture
 <figure>
@@ -29,8 +31,10 @@ This project aims to build a GenAI-powered chatbot that helps seniors interpret 
 ## Documenting progress and findings
 * 16June2025: testing pipleine using the eye medical report. It seems to be scanned pdf, which pdfplumber isn't able to handle. Need to use OCR or LLM's imageURL instead.
 * 17June2025: Only managed to test Tesseract (OCR). MinerU and Docling couldn't work. I suspect its due to the current old laptop. Might want to test them on my mac mini instead.
-*  
-    
+* 18June2025: 
+    * Realized that this project might not need multi-layer memory. Decide to fall back to PSQL for simpler memory storage.
+    * Came across [NanonetsOCR](https://huggingface.co/nanonets/Nanonets-OCR-s) which uses Qwen2.5-VL-3B. Tested it out on hugging face and works well with my existing data. Might consider replacing tesseract with this. To further test it for latency. 
+    * Start trial with label studio. 
 
 
 ## Reference & Thoughts
