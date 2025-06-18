@@ -1,0 +1,20 @@
+openai
+python-dotenv
+pyyaml
+python-json-logger
+hydra-core
+pydantic-settings
+pypdf
+pymupdf
+traceloop-sdk
+sqlalchemy
+pdfplumber
+pydantic-ai
+pgvector
+ipykernel
+pandas
+numpy<2.0.0
+pydantic
+pytesseract
+pdf2image
+# label-studio

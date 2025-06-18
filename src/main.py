@@ -1,5 +1,6 @@
 """To run:
 poetry run python -m src.main
+python -m src.main
 """
 import logging
 import hydra
