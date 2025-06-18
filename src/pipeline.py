@@ -1,7 +1,3 @@
-"""To run:
-poetry run python -m src.pipeline
-"""
-
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -13,8 +9,6 @@ from enum import Enum
 import base64
 import pymupdf
 import pdfplumber
-from PIL import Image
-import pytesseract
 import pytesseract
 from pdf2image import convert_from_path
 from pydantic_ai import Agent, ImageUrl
@@ -256,6 +250,7 @@ class MainPipeline:
             logger.error(f"Error extracting text from PDF {pdf_path}: {e}")
             return ""
 
+    @workflow(name="extract_medical_images")
     async def _extract_medical_images(
         self,
         pdf_path: str,
@@ -300,7 +295,7 @@ class MainPipeline:
                         region_url = f"data:image/png;base64,{region_base64}"
                         
                         result = await self.image_interpretor_agent.run([
-                            self.cfg.prompts.analyze_medical_image,
+                            self.cfg.prompts.image_interpretor_agent,
                             ImageUrl(url=region_url)
                         ])
                         # Handle result based on result_type (should be MedicalImage)
@@ -332,13 +327,14 @@ class MainPipeline:
             logger.error(f"Error in medical image extraction: {e}")
             return []
 
+    @workflow(name="extract_lab_results")
     async def _extract_lab_results(self, text: str) -> List[LabTest]:
         """Process text to extract lab results"""
-        formatted_prompt = self.cfg.prompts.lab_results_agent.format(text=text)
+        formatted_prompt = self.cfg.prompts.lab_result_agent.format(text=text)
         result = await self.lab_result_agent.run(formatted_prompt)
-        lab_test = json.loads(result.data)
+        lab_test = result.data
         logger.info(f"Extracted lab results: {lab_test}")
-        return [LabTest(**item) for item in lab_test.get('data', [])]
+        return [lab_test]
             
     @workflow(name="generate_overall_interpretation")
     async def _generate_overall_interpretation(
@@ -352,7 +348,7 @@ class MainPipeline:
                 if page.image_url:
                     message_content.append(ImageUrl(url=page.image_url))
 
-            result = await self.extract_markdown_text_agent.run(message_content)
+            result = await self.report_interpretation_agent.run(message_content)
             interpretation = result.data if hasattr(result, 'data') else str(result)
             return interpretation.strip() if interpretation else "No significant findings noted."
             
@@ -373,7 +369,8 @@ class MainPipeline:
             
             # Step 2: Check if PDF contains medical images
             logger.info("Step 2: Checking for medical images...")
-            is_medical_image = await self._check_medical_images(pages_metadata)
+            medical_image_check = await self._check_medical_images(pages_metadata)
+            is_medical_image = medical_image_check.is_medical_image
             
             # Step 3: Extract text content
             logger.info("Step 3: Extracting text content...")
@@ -390,8 +387,8 @@ class MainPipeline:
             
             # Step 5: Extract medical images if present
             if is_medical_image:
-                logger.info("Step 4a: Processing medical images...")
-                medical_images = await self._extract_medical_images(pages_metadata, pdf_path)
+                logger.info("Step 5: Extract medical images...")
+                medical_images = await self._extract_medical_images(pdf_path, medical_image_check)
                 logger.info(f"Found {len(medical_images)} medical images")
 
             # Step 6: Generate overall interpretation                   
@@ -422,94 +419,100 @@ class MainPipeline:
                 medical_images=[]
             )
 
-    async def _create_embeddings(self):
-        pass
 
-    async def save_results(self, result: SinglePDFResult, user_id: int) -> None:
-        """Save the results of processing a single PDF file to database."""
-        try:
-            async for session in PSQL.get_session():
-                # 1. Create Report record
-                report_type = "text" if result.pages[0].report_type == ReportType.TEXT_ONLY else "image"
+
+
+
+
+
+    # async def _create_embeddings(self):
+    #     pass
+
+    # async def save_results(self, result: SinglePDFResult, user_id: int) -> None:
+    #     """Save the results of processing a single PDF file to database."""
+    #     try:
+    #         async for session in PSQL.get_session():
+    #             # 1. Create Report record
+    #             report_type = "text" if result.pages[0].report_type == ReportType.TEXT_ONLY else "image"
                 
-                report = Report(
-                    user_id=user_id,
-                    report_type=report_type,
-                    raw_text=result.text_content,
-                    image=result.source_pdf_filename if report_type == "image" else None,
-                )
-                session.add(report)
-                await session.flush()  # Get the report.id
+    #             report = Report(
+    #                 user_id=user_id,
+    #                 report_type=report_type,
+    #                 raw_text=result.text_content,
+    #                 image=result.source_pdf_filename if report_type == "image" else None,
+    #             )
+    #             session.add(report)
+    #             await session.flush()  # Get the report.id
                 
-                # 2. Save lab results if text report
-                if report_type == "text":
-                    # Parse the interpretation to extract lab tests
-                    # Assuming generate_text_interpretation returns an Interpretation object
-                    interpretation_result = await self.generate_text_interpretation(
-                        result.text_content, result.source_pdf_filename
-                    )
+    #             # 2. Save lab results if text report
+    #             if report_type == "text":
+    #                 # Parse the interpretation to extract lab tests
+    #                 # Assuming generate_text_interpretation returns an Interpretation object
+    #                 interpretation_result = await self.generate_text_interpretation(
+    #                     result.text_content, result.source_pdf_filename
+    #                 )
                     
-                    if interpretation_result and interpretation_result.lab_result:
-                        for lab_test in interpretation_result.lab_result:
-                            # Extract numeric value and ranges if possible
-                            numeric_value, lower_range, upper_range = self._parse_lab_values(
-                                lab_test.result, lab_test.reference_range
-                            )
+    #                 if interpretation_result and interpretation_result.lab_result:
+    #                     for lab_test in interpretation_result.lab_result:
+    #                         # Extract numeric value and ranges if possible
+    #                         numeric_value, lower_range, upper_range = self._parse_lab_values(
+    #                             lab_test.result, lab_test.reference_range
+    #                         )
                             
-                            lab_result = LabResult(
-                                report_id=report.id,
-                                test_name=lab_test.test_name,
-                                consolidated_test_name=await self._consolidate_test_name(lab_test.test_name),
-                                result_value=lab_test.result,
-                                unit=lab_test.unit,
-                                lower_range=lower_range,
-                                upper_range=upper_range,
-                                interpretation=await self._determine_interpretation(
-                                    lab_test.test_name, lab_test.result, lab_test.reference_range, lab_test.unit
-                                ),
-                                test_date=interpretation_result.datetime if hasattr(interpretation_result, 'datetime') else None,
-                            )
-                            session.add(lab_result)
+    #                         lab_result = LabResult(
+    #                             report_id=report.id,
+    #                             test_name=lab_test.test_name,
+    #                             consolidated_test_name=await self._consolidate_test_name(lab_test.test_name),
+    #                             result_value=lab_test.result,
+    #                             unit=lab_test.unit,
+    #                             lower_range=lower_range,
+    #                             upper_range=upper_range,
+    #                             interpretation=await self._determine_interpretation(
+    #                                 lab_test.test_name, lab_test.result, lab_test.reference_range, lab_test.unit
+    #                             ),
+    #                             test_date=interpretation_result.datetime if hasattr(interpretation_result, 'datetime') else None,
+    #                         )
+    #                         session.add(lab_result)
                 
-                # 3. Save medical images if image report
-                if report_type == "image":
-                    # Group image types and descriptions
-                    image_types = []
-                    image_descriptions = []
+    #             # 3. Save medical images if image report
+    #             if report_type == "image":
+    #                 # Group image types and descriptions
+    #                 image_types = []
+    #                 image_descriptions = []
                     
-                    for page in result.pages:
-                        if page.image_captions:
-                            image_descriptions.extend(page.image_captions)
+    #                 for page in result.pages:
+    #                     if page.image_captions:
+    #                         image_descriptions.extend(page.image_captions)
                     
-                    # Extract image types from captions or use a default
-                    image_types = await self._extract_image_types(image_descriptions)
+    #                 # Extract image types from captions or use a default
+    #                 image_types = await self._extract_image_types(image_descriptions)
                     
-                    medical_image = MedicalImage(
-                        report_id=report.id,
-                        image_type=", ".join(image_types) if image_types else "Unknown",
-                        image_descriptions="\n".join(image_descriptions),
-                        image_data=result.source_pdf_filename,  # Store PDF filename
-                        extracted_text=result.text_content,
-                    )
-                    session.add(medical_image)
+    #                 medical_image = MedicalImage(
+    #                     report_id=report.id,
+    #                     image_type=", ".join(image_types) if image_types else "Unknown",
+    #                     image_descriptions="\n".join(image_descriptions),
+    #                     image_data=result.source_pdf_filename,  # Store PDF filename
+    #                     extracted_text=result.text_content,
+    #                 )
+    #                 session.add(medical_image)
                 
-                # 4. Create embeddings for RAG
-                await self._create_embeddings(session, report, result)
+    #             # 4. Create embeddings for RAG
+    #             await self._create_embeddings(session, report, result)
                 
-                await session.commit()
-                logger.info(f"Successfully saved results for {result.source_pdf_filename}")
+    #             await session.commit()
+    #             logger.info(f"Successfully saved results for {result.source_pdf_filename}")
                 
-        except Exception as e:
-            logger.error(f"Error saving results to database: {str(e)}")
-            raise
+    #     except Exception as e:
+    #         logger.error(f"Error saving results to database: {str(e)}")
+    #         raise
 
 
-    async def run_batch_pdfs(self, pdf_paths: List[str]) -> List[SinglePDFResult]:
-        """Process a batch of PDF files and return the results."""
-        results = []
-        for pdf_path in pdf_paths:
-            result = await self.run_single_pdf(pdf_path)
-            results.append(result)
-            self.save_results(result)
-        return results
+    # async def run_batch_pdfs(self, pdf_paths: List[str]) -> List[SinglePDFResult]:
+    #     """Process a batch of PDF files and return the results."""
+    #     results = []
+    #     for pdf_path in pdf_paths:
+    #         result = await self.run_single_pdf(pdf_path)
+    #         results.append(result)
+    #         self.save_results(result)
+    #     return results
 
