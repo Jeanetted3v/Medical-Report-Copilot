@@ -30,11 +30,11 @@ This project aims to build a GenAI-powered chatbot that helps seniors interpret 
 
 ## Documenting progress and findings
 * 16June2025: testing pipleine using the eye medical report. It seems to be scanned pdf, which pdfplumber isn't able to handle. Need to use OCR or LLM's imageURL instead.
-* 17June2025: Only managed to test Tesseract (OCR). MinerU and Docling couldn't work. I suspect its due to the current old laptop. Might want to test them on my mac mini instead.
+* 17June2025: Only managed to test Tesseract (OCR). MinerU and Docling couldn't work. Might be due to my local machine. 
 * 18June2025: 
     * Realized that this project might not need multi-layer memory. Decide to fall back to PSQL for simpler memory storage.
     * Came across [NanonetsOCR](https://huggingface.co/nanonets/Nanonets-OCR-s) which uses Qwen2.5-VL-3B. Tested it out on hugging face and works well with my existing data. Might consider replacing tesseract with this. To further test it for latency. 
-    * Start trial with label studio. 
+    * When parsing the whole pdf as image to LLM, it tends to 'read' the text part of the pdf even through it was instructed to only analyze the medical image. Thus I created an additional step to extract out the medical image before analysing/interpreting it. Proven effective. 
 
 
 ## Reference & Thoughts
