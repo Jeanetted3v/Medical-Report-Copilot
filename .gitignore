@@ -9,6 +9,8 @@ __pycache__/
 # data
 data/
 
+requirements.txt
+
 # project specific files
 poetry.lock
 .DS_Store
