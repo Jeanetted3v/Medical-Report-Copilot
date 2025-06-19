@@ -17,4 +17,8 @@ numpy<2.0.0
 pydantic
 pytesseract
 pdf2image
+torch
+torchvision
+transformers
+accelerate
 # label-studio
