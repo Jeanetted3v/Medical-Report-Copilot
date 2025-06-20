@@ -1,10 +1,8 @@
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Dict, Any
 import io
-import json
-
 from enum import Enum
 import base64
 import pymupdf
@@ -14,7 +12,6 @@ from pdf2image import convert_from_path
 from pydantic_ai import Agent, ImageUrl
 from traceloop.sdk import Traceloop
 from traceloop.sdk.decorators import workflow
-from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from src.utils.llm_model_factory import LLMModelFactory
 from src.database.psql_schema import User, Report, LabResult, MedicalImage, Embeddings
@@ -109,14 +106,17 @@ class MainPipeline:
         self.check_medical_images_agent = Agent(
                 model=self.azure_model,
                 result_type=MedicalImageCheck,
+                system_prompt=self.cfg.prompts.check_medical_images_agent.system_prompt
             )
         self.extract_markdown_text_agent = Agent(
                 model=self.azure_model,
-                result_type=str
+                result_type=str,
+                system_prompt=self.cfg.prompts.extract_markdown_text_agent.system_prompt
             )
         self.image_interpretor_agent = Agent(
                 model=self.azure_model,
                 result_type=MedicalImageInterpretation,
+                system_prompt=self.cfg.prompts.image_interpretor_agent.system_prompt
             )
         self.lab_result_agent = Agent(
                 model=self.azure_model,
@@ -124,7 +124,8 @@ class MainPipeline:
             )
         self.report_interpretation_agent = Agent(
                 model=self.azure_model,
-                result_type=str
+                result_type=str,
+                system_prompt=self.cfg.prompts.report_interpretation_agent.system_prompt
             )
         
     def _pdf_to_images(self, pdf_path: str) -> List[PageMetadata]:
@@ -183,8 +184,6 @@ class MainPipeline:
             return MedicalImageCheck(
                 is_medical_image=False,  # Default to text-only on error
                 report_type=ReportType.TEXT_ONLY,
-                image_captions=[],
-                image_types=[],
                 medical_image_locations=[]
             )
 
