@@ -21,4 +21,5 @@ torch
 torchvision
 transformers
 accelerate
+streamlit
 # label-studio
