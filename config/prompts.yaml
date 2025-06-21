@@ -35,6 +35,7 @@ prompts:
       - Extract all medical images.
       - The bounding box should cover the entire image area and not include any text or other content. 
     user_prompt: |
+      Check if there is any medical image in the reports
 
   extract_markdown_text_agent:
     system_prompt: |
@@ -64,6 +65,8 @@ prompts:
       Clean markdown with section headers and table data converted to sentences,
       preserving 100% fidelity to original content.
     user_prompt: |
+      Convert the text below into structured markdown text 
+      {text}
 
   lab_result_agent:
     system_prompt: |
@@ -87,6 +90,9 @@ prompts:
       - Date format must be YYYY-MM-DD or null
       - interpretation must be exactly one of: "normal", "high", "low"
     user_prompt: |
+      Extract laboratory test from the following medical report text. 
+      {text}
+
   image_interpretor_agent:
     system_prompt: |
       You are an expert medical image interpreter. Your task is to analyze the provided
@@ -117,6 +123,7 @@ prompts:
       }
       ```
     user_prompt: |
+      Interpret the medical images provided.
 
   report_interpretation_agent:
     system_prompt: |
@@ -136,4 +143,5 @@ prompts:
       - Use bullet points for each key finding or recommendation
       - Include headings for "Clinical Findings", "Diagnoses", and "Recommendations"
     user_prompt: |
+      Analyse the provided medical reports. 
     
